@@ -4,6 +4,7 @@
  * réutilise l'historique (12 derniers messages) pour le contexte.
  */
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { jsonError, readJsonBody, requireUser, sanitizeUserContent } from "@/lib/api-utils";
 import { gameplaySchema } from "@/lib/validation";
@@ -39,7 +40,9 @@ export async function POST(request: Request) {
   const message = sanitizeUserContent(input.message);
 
   // 1. Conversation existante (propriétaire uniquement) ou création.
-  let conversation = null;
+  let conversation: Prisma.ConversationGetPayload<{
+    include: { messages: true };
+  }> | null = null;
   if (input.conversationId) {
     conversation = await db.conversation.findUnique({
       where: { id: input.conversationId },

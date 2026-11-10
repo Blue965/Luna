@@ -146,24 +146,16 @@ export async function callLuna(
 
   const provider = availableProvider();
 
-  if (provider !== "demo") {
-    try {
-      const content =
-        provider === "openai"
-          ? await callOpenAI(system, messages)
-          : provider === "anthropic"
-            ? await callAnthropic(system, messages)
-            : await callZai(system, messages);
-      return { content, provider, demo: false };
-    } catch (error) {
-      console.error(`[Luna AI] Échec du fournisseur ${provider} :`, error);
-    }
-  } else {
-    try {
-      return { content: await callZai(system, messages), provider: "zai", demo: false };
-    } catch (error) {
-      console.error("[Luna AI] Modèle intégré indisponible, bascule en mode démo :", error);
-    }
+  try {
+    const content =
+      provider === "openai"
+        ? await callOpenAI(system, messages)
+        : provider === "anthropic"
+          ? await callAnthropic(system, messages)
+          : await callZai(system, messages);
+    return { content, provider, demo: false };
+  } catch (error) {
+    console.error(`[Luna AI] Échec du fournisseur ${provider} :`, error);
   }
 
   return { content: demoFallback(), provider: "demo", demo: true };

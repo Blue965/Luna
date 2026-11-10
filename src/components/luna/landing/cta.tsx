@@ -1,6 +1,7 @@
 "use client";
 
 /** Sections « Comment ça marche » et CTA finale + footer. */
+import Link from "next/link";
 import { ArrowRight, Blocks, PlayCircle, Rocket, UserRoundCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LunaLogo } from "@/components/luna/logo";
@@ -96,9 +97,22 @@ export function LandingFooter() {
     <footer className="border-t border-zinc-800/60">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-8 sm:flex-row">
         <LunaLogo />
-        <p className="text-[12.5px] text-zinc-500">
-          Copilote technique pour développeurs Roblox — Luna AI n&apos;est pas affiliée à Roblox Corporation.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 sm:items-end">
+          <p className="text-[12.5px] text-zinc-500">
+            Copilote technique pour développeurs Roblox — Luna AI n&apos;est pas affiliée à Roblox Corporation.
+          </p>
+          <nav className="flex items-center gap-3 text-[12px] text-zinc-500" aria-label="Liens légaux">
+            <Link href="/privacy" className="transition-colors hover:text-zinc-300">
+              Politique de confidentialité
+            </Link>
+            <span aria-hidden="true" className="text-zinc-700">
+              ·
+            </span>
+            <Link href="/terms" className="transition-colors hover:text-zinc-300">
+              Conditions d&apos;utilisation
+            </Link>
+          </nav>
+        </div>
         <p className="font-mono text-[12px] text-zinc-600">« Code plus vite. Crée sans limites. »</p>
       </div>
     </footer>
