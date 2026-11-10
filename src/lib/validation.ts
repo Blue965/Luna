@@ -65,3 +65,27 @@ export function firstIssueMessage(error: z.ZodError): string {
   const issue = error.issues[0];
   return issue?.message ?? "Données invalides.";
 }
+
+/* ------------------------------------------------------------------ */
+/* OpenRouter (BYOK)                                                   */
+/* ------------------------------------------------------------------ */
+
+export const openrouterKeySchema = z.object({
+  apiKey: z
+    .string()
+    .trim()
+    .min(30, "Cette clé est trop courte pour être une clé OpenRouter.")
+    .max(200, "Cette clé est trop longue.")
+    .regex(/^sk-or-/, "Une clé OpenRouter commence par « sk-or- »."),
+});
+export type OpenRouterKeyInput = z.infer<typeof openrouterKeySchema>;
+
+export const openrouterModelSchema = z.object({
+  model: z
+    .string()
+    .trim()
+    .min(2, "Identifiant de modèle requis.")
+    .max(160, "Identifiant de modèle trop long.")
+    .regex(/^[A-Za-z0-9._\-/]+(:[A-Za-z0-9._-]+)?$/, "Identifiant de modèle invalide."),
+});
+export type OpenRouterModelInput = z.infer<typeof openrouterModelSchema>;

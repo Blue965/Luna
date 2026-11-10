@@ -20,7 +20,18 @@ export type ViewId =
   | "historique"
   | "parametres";
 
-export type AiProviderId = "zai" | "openai" | "anthropic" | "demo";
+export type AiProviderId = "zai" | "openai" | "anthropic" | "openrouter" | "demo";
+
+/** Statut OpenRouter (BYOK) exposé au client — jamais la clé elle-même. */
+export interface UserOpenRouterStatus {
+  configured: boolean;
+  keyHint: string | null;
+  defaultModel: string | null;
+  verifiedAt: string | null;
+  isFreeTier: boolean | null;
+  usage: number | null;
+  limit: number | null;
+}
 
 /** Préférences d'interface stockées côté compte (JSON). */
 export interface UserPreferences {
@@ -48,12 +59,21 @@ export interface UserProfile {
   robloxUserId: string | null;
   createdAt: string;
   preferences: UserPreferences;
+  openrouter: UserOpenRouterStatus;
 }
 
 export interface AppPublicConfig {
   robloxOAuthConfigured: boolean;
   aiProvider: AiProviderId;
   version: string;
+}
+
+/** Modèle exposé par /api/openrouter/models. */
+export interface OpenRouterModelView {
+  id: string;
+  name: string;
+  contextLength: number | null;
+  free: boolean;
 }
 
 export interface ConversationSummary {

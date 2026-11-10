@@ -9,7 +9,8 @@ import { jsonError, readJsonBody, requireUser, sanitizeUserContent } from "@/lib
 import { gameplaySchema } from "@/lib/validation";
 import { AI_RATE_LIMIT, rateLimit } from "@/lib/rate-limit";
 import { getSystemPrompt } from "@/lib/ai/prompts";
-import { callLuna, type AiMessage } from "@/lib/ai/provider";
+import { callLuna, type AiMessage, OpenRouterError } from "@/lib/ai/provider";
+import { resolveUserOpenRouter } from "@/lib/openrouter";
 import { demoGameplayReply } from "@/lib/ai/demo";
 import type { GameplayReply } from "@/lib/types";
 
@@ -65,11 +66,23 @@ export async function POST(request: Request) {
     isNew = true;
   }
 
-  // 2. Appel IA avec contexte conversationnel.
+  // 2. Appel IA avec contexte conversationnel — priorité à la clé OpenRouter (BYOK).
   const system = getSystemPrompt("gameplay");
-  const aiResult = await callLuna(system, [...history, { role: "user", content: message }], () =>
-    demoGameplayReply(message)
-  );
+  const openrouter = await resolveUserOpenRouter(user.id);
+  let aiResult;
+  try {
+    aiResult = await callLuna(
+      system,
+      [...history, { role: "user", content: message }],
+      () => demoGameplayReply(message),
+      openrouter ?? undefined
+    );
+  } catch (error) {
+    if (error instanceof OpenRouterError) {
+      return NextResponse.json({ error: error.message, code: "OPENROUTER_ERROR" }, { status: 502 });
+    }
+    throw error;
+  }
 
   // 3. Persistance : création éventuelle + messages.
   if (isNew || !conversationId) {

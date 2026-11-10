@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LuauEditor } from "@/components/luna/luau-highlighter";
 import { MarkdownContent } from "@/components/luna/markdown-content";
 import { DemoBadge } from "@/components/luna/demo-badge";
+import { ModelIndicator } from "@/components/luna/model-indicator";
 import { useLunaStore } from "@/hooks/use-luna-store";
 import { toast } from "sonner";
 import { debugSchema } from "@/lib/validation";
@@ -83,6 +84,7 @@ export function CliniqueView() {
           <h1 className="text-xl font-bold tracking-tight text-zinc-50">Clinique du Code</h1>
           <p className="text-[13px] text-zinc-400">Colle ton code et l&apos;erreur de l&apos;Output : Luna pose le diagnostic.</p>
         </div>
+        <ModelIndicator />
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[420px_1fr]">

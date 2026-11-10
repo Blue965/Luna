@@ -32,6 +32,18 @@ Luna AI est une plateforme SaaS de copilote technique pour développeurs Roblox 
 
 Plus : landing page premium, dashboard avec statistiques réelles, historique complet (filtre, détail, suppression), paramètres (profil, préférences, utilisation, suppression de compte), responsive mobile/tablette/desktop.
 
+### OpenRouter BYOK — « apporte ta propre clé »
+
+Chaque utilisateur peut coller **sa propre clé OpenRouter** (gratuite) dans Paramètres → « Modèle IA » :
+
+1. La clé est **validée en direct** auprès d'OpenRouter (`GET /api/v1/auth/key`) — une clé invalide est refusée avec un message clair.
+2. Elle est ensuite **chiffrée AES-256-GCM** (`APP_SECRET`) et stockée sur le compte — jamais renvoyée au navigateur (seul un indice `sk-or-v1-…xxxx` est affiché).
+3. La **liste complète des modèles OpenRouter** (460+ modèles) est récupérée en direct et mise en cache 15 min ; les modèles **gratuits** sont groupés et mis en avant en tête.
+4. L'utilisateur choisit son modèle (recherche instantanée, badge Gratuit/Payant, longueur de contexte) — depuis les Paramètres **ou depuis l'en-tête de chacun des trois assistants**.
+5. Les trois assistants appellent alors OpenRouter **avec sa clé et son modèle**. En cas d'échec (clé révoquée, modèle indisponible, quota gratuit atteint), l'erreur réelle est propagée en clair — **aucun repli silencieux**.
+
+Sans clé personnelle, Luna continue d'utiliser sa chaîne de fournisseurs serveur habituelle.
+
 ## Stack technique
 
 - **Next.js 16** (App Router) + **TypeScript strict** + **React 19**
@@ -40,6 +52,7 @@ Plus : landing page premium, dashboard avec statistiques réelles, historique co
 - **Zod** pour la validation frontend **et** backend
 - API Routes Next.js pour le backend
 - **z-ai-web-dev-sdk** (modèle intégré) ou clés OpenAI / Anthropic via variables d'environnement
+- **OpenRouter BYOK** : clé personnelle de chaque utilisateur (chiffrée), tous les modèles OpenRouter accessibles
 - Authentification **Roblox OAuth 2.0 / OpenID Connect** (Authorization Code Flow + PKCE)
 
 ## Installation
@@ -113,12 +126,30 @@ Les instructions système de Luna (identité, règles de programmation Luau, sp�
 
 Chaîne de résolution du provider (`src/lib/ai/provider.ts`) :
 
-1. `OPENAI_API_KEY` définie → API OpenAI (modèle : `OPENAI_MODEL`, défaut `gpt-4o-mini`)
-2. `ANTHROPIC_API_KEY` définie → API Anthropic (modèle : `ANTHROPIC_MODEL`, défaut `claude-sonnet-4-20250514`)
-3. Sinon → modèle intégré `z-ai-web-dev-sdk` (aucune configuration requise)
-4. En cas d'échec → **mode démo** : réponses de secours réalistes, toujours signalées par un badge « Mode démo » (la Clinique y utilise même un vrai moteur d'analyse par règles pour les erreurs Roblox les plus fréquentes)
+1. **Clé OpenRouter personnelle de l'utilisateur (BYOK)** → API OpenRouter avec le modèle qu'il a choisi — priorité absolue, erreurs propagées sans repli silencieux
+2. `OPENAI_API_KEY` définie → API OpenAI (modèle : `OPENAI_MODEL`, défaut `gpt-4o-mini`)
+3. `ANTHROPIC_API_KEY` définie → API Anthropic (modèle : `ANTHROPIC_MODEL`, défaut `claude-sonnet-4-20250514`)
+4. Sinon → modèle intégré `z-ai-web-dev-sdk` (aucune configuration requise)
+5. En cas d'échec → **mode démo** : réponses de secours réalistes, toujours signalées par un badge « Mode démo » (la Clinique y utilise même un vrai moteur d'analyse par règles pour les erreurs Roblox les plus fréquentes)
+
+> Remarque : les modèles OpenRouter « :free » sont soumis aux quotas du niveau gratuit d'OpenRouter (voir [leurs docs](https://openrouter.ai/docs)). La liste des modèles et leurs prix évoluent en permanence — c'est pourquoi elle est toujours récupérée en direct.
 
 Chaque requête IA applique le pipeline : authentification → validation Zod → rate limiting (12 req / 5 min par assistant) → prompt système serveur → appel → parsing structuré → historique → réponse.
+
+### Secret de chiffrement (BYOK)
+
+Le stockage des clés OpenRouter personnelles exige une variable `APP_SECRET` (elle dérive la clé AES-256-GCM) :
+
+```bash
+# Génère et ajoute la valeur dans .env (jamais dans le code source) :
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+```env
+APP_SECRET="<64 caractères hex>"
+```
+
+Si `APP_SECRET` change, les clés déjà stockées deviennent indéchiffrables (les utilisateurs devront les ressaisir) — c'est le comportement attendu d'un chiffrement authentifié.
 
 ## Architecture du projet
 
@@ -138,6 +169,8 @@ src/
 │       │                           # historique, paramètres
 │       ├── app-shell.tsx           # sidebar responsive + navigation
 │       ├── auth-dialog.tsx         # connexion Roblox / mode démo
+│       ├── model-picker-dialog.tsx # sélecteur de modèles OpenRouter (recherche)
+│       ├── model-indicator.tsx     # modèle actif dans l'en-tête des assistants
 │       ├── luau-highlighter.tsx    # coloration Luau maison + numéros de lignes
 │       ├── code-block.tsx          # blocs de code copiables
 │       ├── markdown-content.tsx    # rendu markdown des réponses IA
@@ -146,7 +179,9 @@ src/
 │   ├── auth.ts                     # sessions DB + cookies HttpOnly
 │   ├── roblox-oauth.ts             # PKCE, state/nonce, JWT RS256 via JWKS, userinfo
 │   ├── ai/prompts.ts               # cerveau Luna (instructions système)
-│   ├── ai/provider.ts              # z-ai / OpenAI / Anthropic + fallback démo
+│   ├── ai/provider.ts              # OpenRouter BYOK / z-ai / OpenAI / Anthropic + fallback démo
+│   ├── openrouter.ts               # validation clé, liste modèles, chat, résolution utilisateur
+│   ├── crypto.ts                   # chiffrement AES-256-GCM des clés personnelles
 │   ├── ai/demo.ts                  # réponses de secours signalées
 │   ├── rate-limit.ts · validation.ts · api-utils.ts · preferences.ts · types.ts
 ├── hooks/use-luna-store.ts         # état global (SPA, sync du hash d'URL)
@@ -171,12 +206,18 @@ src/
 | POST | `/api/ai/generate` | Atelier Luau |
 | POST | `/api/ai/debug` | Clinique du Code |
 | POST | `/api/ai/gameplay` | Économie & Gameplay (chat) |
+| GET | `/api/openrouter` | Statut de la clé OpenRouter de l'utilisateur |
+| POST | `/api/openrouter` | Enregistre + valide une clé (live OpenRouter), chiffre, stocke |
+| PATCH | `/api/openrouter` | Change le modèle par défaut des 3 assistants |
+| DELETE | `/api/openrouter` | Retire la clé chiffrée et le modèle choisi |
+| GET | `/api/openrouter/models` | Tous les modèles OpenRouter (gratuits d'abord, cache 15 min) |
 
 Toutes les routes sensibles : authentification obligatoire, validation Zod, rate limiting, isolation stricte des données par compte.
 
 ## Sécurité
 
-- Clés API uniquement en variables d'environnement serveur — jamais exposées au frontend.
+- Clés API serveur uniquement en variables d'environnement — jamais exposées au frontend.
+- **Clés OpenRouter personnelles : chiffrées AES-256-GCM au repos** (clé dérivée de `APP_SECRET`), validation en direct avant stockage, jamais renvoyées au client (indice 4 caractères seulement), effacées lors de la suppression de la clé ou du compte. Toute altération du texte chiffré est détectée (GCM) et la clé est ignorée.
 - OAuth : Authorization Code Flow + **PKCE S256**, `state` anti-CSRF, `nonce` anti-rejeu, vérification de la signature du ID token (RS256 / JWKS).
 - Cookies `HttpOnly`, `Secure` (production), `SameSite=Lax` ; jetons de session aléatoires (32 octets base64url).
 - Rate limiting mémoire par utilisateur et par assistant.

@@ -18,6 +18,13 @@ model User {
   avatarUrl     String?
   isDemo        Boolean  @default(false)
   preferences   String   @default("{}")       // JSON (Prisma SQLite ne supporte pas Json)
+
+  // Clé API personnelle OpenRouter (BYOK) — chiffrée AES-256-GCM au repos.
+  openrouterKeyEnc      String?   // v1:iv:tag:ciphertext (base64) — jamais renvoyée au client
+  openrouterKeyHint     String?   // 4 derniers caractères, ex. "sk-or-v1-…7f2a"
+  openrouterModel       String?   // Modèle choisi par l'utilisateur (ex. "deepseek/…:free")
+  openrouterVerifiedAt  DateTime? // Dernière vérification réussie auprès d'OpenRouter
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   sessions      Session[]

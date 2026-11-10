@@ -9,7 +9,8 @@ import { jsonError, readJsonBody, requireUser, sanitizeUserContent } from "@/lib
 import { generateSchema } from "@/lib/validation";
 import { AI_RATE_LIMIT, rateLimit } from "@/lib/rate-limit";
 import { getSystemPrompt } from "@/lib/ai/prompts";
-import { callLuna, extractJsonObject } from "@/lib/ai/provider";
+import { callLuna, extractJsonObject, OpenRouterError } from "@/lib/ai/provider";
+import { resolveUserOpenRouter } from "@/lib/openrouter";
 import { demoGenerate } from "@/lib/ai/demo";
 import type { GenerationResult, ScriptLevel, ScriptType } from "@/lib/types";
 
@@ -64,10 +65,20 @@ Priorité : ${input.focus}
 
 Réponds uniquement avec l'objet JSON demandé dans tes instructions.`;
 
-  // 2. Appel IA avec repli démo.
-  const aiResult = await callLuna(system, [{ role: "user", content: userContent }], () =>
-    JSON.stringify(demoGenerate(description, input.scriptType, input.level))
-  );
+  // 2. Appel IA avec repli démo — priorité à la clé OpenRouter personnelle (BYOK).
+  const openrouter = await resolveUserOpenRouter(user.id);
+  let aiResult;
+  try {
+    aiResult = await callLuna(system, [{ role: "user", content: userContent }], () =>
+      JSON.stringify(demoGenerate(description, input.scriptType, input.level)),
+      openrouter ?? undefined
+    );
+  } catch (error) {
+    if (error instanceof OpenRouterError) {
+      return NextResponse.json({ error: error.message, code: "OPENROUTER_ERROR" }, { status: 502 });
+    }
+    throw error;
+  }
 
   // 3. Parsing structuré.
   const json = extractJsonObject<AtelierJson>(aiResult.content);

@@ -2,16 +2,23 @@
  * Fournisseur IA de Luna AI.
  *
  * Chaîne de résolution (serveur uniquement) :
- *   1. OPENAI_API_KEY configuré    → API OpenAI (chat completions)
- *   2. ANTHROPIC_API_KEY configuré → API Anthropic (messages)
- *   3. Sinon                       → SDK intégré z-ai-web-dev-sdk
- *   4. En cas d'échec              → générateur de secours "mode démo"
+ *   1. Clé OpenRouter personnelle de l'utilisateur (BYOK, chiffrée en base)
+ *      → API OpenRouter avec LE modèle qu'il a choisi. En cas d'échec,
+ *      l'erreur est propagée (pas de repli silencieux : l'utilisateur doit
+ *      savoir si sa clé ou son modèle pose problème).
+ *   2. OPENAI_API_KEY configuré    → API OpenAI (chat completions)
+ *   3. ANTHROPIC_API_KEY configuré → API Anthropic (messages)
+ *   4. Sinon                       → SDK intégré z-ai-web-dev-sdk
+ *   5. En cas d'échec              → générateur de secours "mode démo"
  *                                     (réponses réalistes clairement signalées)
  *
- * Les clés restent dans les variables d'environnement et ne sont
- * jamais exposées au frontend.
+ * Les clés restent côté serveur et ne sont jamais exposées au frontend.
  */
 import type { AiProviderId } from "@/lib/types";
+import { callOpenRouter, OpenRouterError, type UserOpenRouterContext } from "@/lib/openrouter";
+
+export { OpenRouterError };
+export type { UserOpenRouterContext };
 
 export interface AiMessage {
   role: "user" | "assistant";
@@ -119,13 +126,24 @@ async function callZai(system: string, messages: AiMessage[]): Promise<string> {
 
 /**
  * Appelle le fournisseur IA configuré avec les instructions système.
- * En cas d'échec, bascule automatiquement en mode démo (réponse signalée).
+ *
+ * - Si `openrouter` est fourni (clé personnelle de l'utilisateur), il a la
+ *   priorité absolue ; toute erreur est propagée en OpenRouterError afin que
+ *   la route renvoie un message clair (pas de repli silencieux).
+ * - Sinon, en cas d'échec des fournisseurs serveur, bascule automatiquement
+ *   en mode démo (réponse signalée).
  */
 export async function callLuna(
   system: string,
   messages: AiMessage[],
-  demoFallback: () => string
+  demoFallback: () => string,
+  openrouter?: UserOpenRouterContext
 ): Promise<AiCallResult> {
+  if (openrouter) {
+    const content = await callOpenRouter(openrouter.apiKey, openrouter.model, system, messages);
+    return { content, provider: "openrouter", demo: false };
+  }
+
   const provider = availableProvider();
 
   if (provider !== "demo") {

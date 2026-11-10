@@ -9,7 +9,8 @@ import { readJsonBody, requireUser, sanitizeUserContent } from "@/lib/api-utils"
 import { debugSchema } from "@/lib/validation";
 import { AI_RATE_LIMIT, rateLimit } from "@/lib/rate-limit";
 import { getSystemPrompt } from "@/lib/ai/prompts";
-import { callLuna, extractJsonObject } from "@/lib/ai/provider";
+import { callLuna, extractJsonObject, OpenRouterError } from "@/lib/ai/provider";
+import { resolveUserOpenRouter } from "@/lib/openrouter";
 import { demoDiagnose } from "@/lib/ai/demo";
 import type { DiagnosisResult } from "@/lib/types";
 
@@ -69,9 +70,21 @@ ${context ? `\nContexte supplémentaire : ${context}\n` : ""}
 
 Réponds uniquement avec l'objet JSON demandé dans tes instructions.`;
 
-  const aiResult = await callLuna(system, [{ role: "user", content: userContent }], () =>
-    JSON.stringify(demoDiagnose(code, errorMessage))
-  );
+  const openrouter = await resolveUserOpenRouter(user.id);
+  let aiResult;
+  try {
+    aiResult = await callLuna(
+      system,
+      [{ role: "user", content: userContent }],
+      () => JSON.stringify(demoDiagnose(code, errorMessage)),
+      openrouter ?? undefined
+    );
+  } catch (error) {
+    if (error instanceof OpenRouterError) {
+      return NextResponse.json({ error: error.message, code: "OPENROUTER_ERROR" }, { status: 502 });
+    }
+    throw error;
+  }
 
   const json = extractJsonObject<CliniqueJson>(aiResult.content);
   const codeCorrige = typeof json?.codeCorrige === "string" && json.codeCorrige.trim() ? json.codeCorrige : null;

@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LuauEditor } from "@/components/luna/luau-highlighter";
 import { MarkdownContent } from "@/components/luna/markdown-content";
 import { DemoBadge } from "@/components/luna/demo-badge";
+import { ModelIndicator } from "@/components/luna/model-indicator";
 import { useLunaStore } from "@/hooks/use-luna-store";
 import { toast } from "sonner";
 import { generateSchema } from "@/lib/validation";
@@ -123,6 +124,7 @@ export function AtelierView() {
           <h1 className="text-xl font-bold tracking-tight text-zinc-50">Atelier Luau</h1>
           <p className="text-[13px] text-zinc-400">Génération de scripts propres, commentés et optimisés.</p>
         </div>
+        <ModelIndicator />
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[380px_1fr]">

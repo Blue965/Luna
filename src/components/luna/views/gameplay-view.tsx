@@ -13,6 +13,7 @@ import { UserAvatar } from "@/components/luna/user-avatar";
 import { LunaMark } from "@/components/luna/logo";
 import { MarkdownContent } from "@/components/luna/markdown-content";
 import { DemoBadge } from "@/components/luna/demo-badge";
+import { ModelIndicator } from "@/components/luna/model-indicator";
 import { useLunaStore } from "@/hooks/use-luna-store";
 import { toast } from "sonner";
 import { gameplaySchema } from "@/lib/validation";
@@ -114,12 +115,13 @@ export function GameplayView() {
           <h1 className="text-xl font-bold tracking-tight text-zinc-50">Économie &amp; Gameplay</h1>
           <p className="text-[13px] text-zinc-400">Conception, mathématiques et équilibrage — conversation continue.</p>
         </div>
+        <ModelIndicator />
         <Button
           variant="outline"
           size="sm"
           onClick={resetConversation}
           disabled={sending}
-          className="ml-auto gap-1.5 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          className="gap-1.5 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
           aria-label="Nouvelle conversation"
         >
           <Trash2 className="h-3.5 w-3.5" />
