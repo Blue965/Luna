@@ -1,0 +1,60 @@
+// Luna AI — Schéma de base de données
+// SQLite en développement / sandbox (voir README pour PostgreSQL en production).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid()) // Identifiant interne Luna AI
+  robloxUserId  String?  @unique              // `sub` OIDC Roblox (null en mode démo)
+  username      String   @unique              // Pseudonyme Roblox ou démo
+  displayName   String?
+  avatarUrl     String?
+  isDemo        Boolean  @default(false)
+  preferences   String   @default("{}")       // JSON (Prisma SQLite ne supporte pas Json)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sessions      Session[]
+  conversations Conversation[]
+}
+
+model Session {
+  id        String   @id // Jeton de session imprévisible (base64url 32 octets)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Conversation {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assistantType String   // "atelier" | "clinique" | "gameplay"
+  title         String
+  meta          String?  // JSON : options de génération, provider, mode démo…
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  messages      Message[]
+
+  @@index([userId, assistantType, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "user" | "assistant"
+  content        String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
